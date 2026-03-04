@@ -4,6 +4,15 @@
 
 ---
 
+## Revision History
+
+| Version | Date       | Changes                                                              |
+|---------|------------|----------------------------------------------------------------------|
+| 1.0     | 2026-02-25 | Initial draft                                                        |
+| 1.1     | 2026-03-04 | Added vocab lists (named collections); updated data model and routes |
+
+---
+
 # 1. Product Overview
 
 ## 1.1 Vision
@@ -41,7 +50,7 @@ Language selection is manual (no automatic detection in MVP).
 # 4. Core Features
 
 ## 4.1 Authentication
-- Email login (Magic link or password)
+- Email + password login
 - Private user accounts
 - All vocabulary data is user-scoped
 
@@ -50,15 +59,15 @@ Language selection is manual (no automatic detection in MVP).
 ## 4.2 Capture & OCR
 
 User can:
-- Upload an image
-- Take a photo via browser camera
+- Take a photo directly in the browser (camera access, like Google Translate)
+- Or upload an image from their device
 - Select OCR language (EN / FI / ES)
 
 System will:
-- Run OCR using client-side engine
+- Run OCR using client-side engine (no image sent to server)
 - Render selectable text boxes over image
-- Allow single or multi-selection
-- Merge selected text into phrase
+- Allow single or multi-box selection
+- Merge selected text into a phrase
 
 Images are discarded after OCR (not stored in cloud).
 
@@ -66,43 +75,59 @@ Images are discarded after OCR (not stored in cloud).
 
 ## 4.3 Card Creation
 
-After selecting text:
-
-User sees Card Preview screen:
-- Editable text field
+After selecting text, user sees the Card Preview screen:
+- Editable text field (prefilled from selection)
 - Language selector
-- Meaning panel
-- Pronunciation button
+- Meaning panel (auto-fetched, manually editable)
+- Pronunciation button (plays TTS)
+- List selector (choose which list to save to)
 - Save button
 
 Pronunciation:
-- Uses Web Speech API (browser-based TTS)
+- Uses Web Speech API (browser-based TTS, no external API needed)
 
 Meaning strategy:
-- English: dictionary API
-- Finnish & Spanish: translation-based meaning
-- Manual editing always available
+- English: free dictionary API (dictionaryapi.dev)
+- Finnish & Spanish: empty by default — user types meaning manually (MVP)
+- Manual editing always available for all languages
 
 ---
 
-## 4.4 My Book (Library)
+## 4.4 My Lists (Vocabulary Library)
 
+Users can create and manage named vocabulary lists.
+
+### List management
 User can:
-- View saved vocabulary list
-- Search by text
-- Filter by language
+- Create a new list (requires a name)
+- Rename a list
+- Delete a list (deletes all items in it)
+- View all their lists on the My Lists page
+
+### Item management (within a list)
+User can:
+- View all saved items in a list
+- Search by text within a list
+- Edit the meaning of an item
+- Delete an item
+
+One item belongs to exactly one list.
 
 ---
 
 ## 4.5 Flashcard Mode
 
-Review session includes:
+User can:
+- Select one or multiple lists to review in a single session
+- Start a flashcard session with the selected items
+
+Review session:
 - Front: word/phrase
 - Back: meaning
 - Pronunciation button
 - Buttons: Again / Good
 
-System tracks:
+System tracks per item:
 - review_count
 - last_reviewed_at
 
@@ -112,18 +137,30 @@ Spaced repetition algorithm is NOT included in MVP.
 
 # 5. Data Model (MVP)
 
-Table: vocab_items
+## Table: vocab_lists
 
-Fields:
-- id (uuid)
-- user_id (foreign key)
-- text (string)
-- language (enum: en | fi | es)
-- meaning (string)
-- source (default: "ocr")
-- created_at (timestamp)
-- review_count (integer)
-- last_reviewed_at (timestamp)
+| Field      | Type      | Notes                          |
+|------------|-----------|--------------------------------|
+| id         | uuid      | primary key                    |
+| user_id    | uuid      | foreign key → auth.users       |
+| name       | text      | required, e.g. "Finnish Signs" |
+| created_at | timestamp |                                |
+
+## Table: vocab_items
+
+| Field           | Type      | Notes                            |
+|-----------------|-----------|----------------------------------|
+| id              | uuid      | primary key                      |
+| user_id         | uuid      | foreign key → auth.users         |
+| list_id         | uuid      | foreign key → vocab_lists        |
+| text            | text      | the word or phrase               |
+| language        | enum      | en / fi / es                     |
+| meaning         | text      | auto-fetched or manually written |
+| source          | text      | default: "ocr"                   |
+| created_at      | timestamp |                                  |
+| updated_at      | timestamp |                                  |
+| review_count    | integer   | default: 0                       |
+| last_reviewed_at| timestamp | nullable                         |
 
 No image storage.
 
@@ -134,77 +171,83 @@ No image storage.
 - Automatic language detection
 - Advanced spaced repetition algorithm
 - Offline mode
-- AI sentence generation
-- Mobile app (web first)
-- Collaborative or shared books
+- AI-generated meanings or sentence examples
+- Mobile app (web first, mobile later)
+- Collaborative or shared lists
 
 ---
 
 # 7. Technical Architecture (MVP)
 
 Frontend:
-- Next.js + TypeScript
+- Next.js + TypeScript + Tailwind CSS
 
 Backend & Database:
-- Supabase (Auth + Postgres + RLS)
+- Supabase (Auth + Postgres + Row Level Security)
 
 OCR:
-- Tesseract.js (client-side)
+- Tesseract.js (runs in the browser, no server needed)
 
 Pronunciation:
-- Web Speech API
+- Web Speech API (built into modern browsers, free)
 
 Meaning Providers:
-- English dictionary API
-- Translation fallback for FI / ES
+- English: dictionaryapi.dev (free, no key needed)
+- Finnish & Spanish: manual input (MVP)
+
+Deployment:
+- Vercel (frontend)
+- Supabase cloud (database + auth)
 
 ---
 
 # 8. Milestones
 
 ## Milestone 1 — Foundation
-- Project scaffold
-- Supabase integration
-- Auth
-- Protected routes
+- Next.js project scaffold
+- Supabase integration (auth + DB schema)
+- Protected routes (middleware)
+- Navigation shell
 
-## Milestone 2 — OCR Flow
-- Upload
-- Camera capture
-- OCR processing
-- Text selection UI
+## Milestone 2 — OCR & Capture
+- Camera access + file upload
+- Tesseract.js OCR with language selection
+- Text bounding box overlay on image
+- Multi-box selection + phrase composition
 
-## Milestone 3 — Card System
-- Card preview
-- Pronunciation
-- Save to database
-- Library page
+## Milestone 3 — Card Creation & Lists
+- Card preview screen
+- Pronunciation (Web Speech API)
+- List management (create / rename / delete)
+- Save card to selected list
 
 ## Milestone 4 — Meaning Providers
-- English dictionary integration
-- FI/ES fallback strategy
-- Manual meaning edit
+- English dictionary API integration
+- Provider pattern (easy to extend later)
+- Manual meaning editing
 
 ## Milestone 5 — Flashcards
-- Review UI
+- Select one or multiple lists to review
+- Flashcard UI (front / back flip)
 - Again / Good logic
-- Review tracking
+- Update review_count and last_reviewed_at
 
 ---
 
 # 9. Success Criteria (MVP)
 
 A user can:
-1) Upload or take a photo
-2) Select text from OCR
-3) Hear pronunciation
-4) See a meaning
-5) Save the card
-6) Review it in flashcard mode
+1. Sign up and log in
+2. Create a named vocabulary list
+3. Take a photo or upload an image
+4. Select text from the OCR result
+5. Hear the pronunciation
+6. See or write a meaning
+7. Save the card to a list
+8. Review the list in flashcard mode
 
-All within a private account environment.
+All within a private, secure account.
 
 ---
 
-End of PRD v1
-
+End of PRD v1.1

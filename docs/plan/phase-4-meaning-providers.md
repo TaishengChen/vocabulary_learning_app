@@ -1,7 +1,11 @@
 # Phase 4 — Meaning Providers
 
 ## Goal
-Implement the meaning fetch system. For English words, automatically fetch a definition from a free dictionary API. For Finnish and Spanish, leave the field empty for the user to fill in. Use a clean provider pattern that makes it easy to add more APIs later.
+Implement the meaning fetch system. For any selected word/phrase:
+1. **Translate** it into the user's target language (using MyMemory free API — no key needed)
+2. **Definition** — for English words, also fetch a dictionary definition (dictionaryapi.dev)
+
+The user sets their target language once (stored in localStorage). CardPreview shows both translation and definition sections.
 
 ## Prerequisites
 - Phase 3 complete (CardPreview exists and has a meaning field)
@@ -56,15 +60,21 @@ response[0].meanings[0].definitions[0].definition
 
 ---
 
-### T3 — Implement FiEsFallbackProvider
+### T3 — Implement TranslationProvider (MyMemory API)
 
 **You do:** Add to `src/lib/meaning/providers.ts`:
 
-Logic:
-1. `canHandle(lang)` → returns `lang === 'fi' || lang === 'es'`
-2. `getMeaning(text, lang)` → returns `{ meaning: '', source: 'manual' }` immediately (no API call)
+API: `https://api.mymemory.translated.net/get?q={text}&langpair={from}|{to}` (free, no key)
 
-This is intentionally simple for MVP. The user types the meaning themselves.
+Logic:
+1. `canHandle(lang)` → returns `true` for all languages
+2. `getMeaning(text, sourceLang, targetLang)`:
+   - Fetch from MyMemory
+   - Parse `response.responseData.translatedText`
+   - Return `{ meaning: translatedText, source: 'mymemory' }`
+   - On failure → return `{ meaning: '', source: 'manual' }`
+
+This is intentionally simple for MVP. The user can edit the translation manually.
 
 ---
 

@@ -7,6 +7,7 @@ import { runOcr } from '@/lib/ocr/tesseractWorker'
 import ImagePicker from '@/components/capture/ImagePicker'
 import OcrOverlay from '@/components/capture/OcrOverlay'
 import SelectionBar from '@/components/capture/SelectionBar'
+import CardPreview from '@/components/capture/CardPreview'
 
 type OcrState = 'idle' | 'loading' | 'done' | 'error'
 
@@ -29,6 +30,7 @@ export default function CapturePage() {
   const [ocrProgress, setOcrProgress] = useState(0)
   const [boxes, setBoxes] = useState<OcrBox[]>([])
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [showPreview, setShowPreview] = useState(false)
 
   function handleImageSelected(file: File) {
     setImageFile(file)
@@ -63,13 +65,22 @@ export default function CapturePage() {
   }
 
   function handleCreateCard() {
-    const text = composeText(boxes, selectedIds)
-    // Phase 3 will handle this — for now just log
-    console.log('Create card:', { text, language })
-    alert(`Card text: "${text}" (Phase 3 will open the card form)`)
+    setShowPreview(true)
   }
 
   const composedText = composeText(boxes, selectedIds)
+
+  if (showPreview) {
+    return (
+      <div className="max-w-2xl mx-auto pb-24">
+        <CardPreview
+          initialText={composedText}
+          language={language}
+          onBack={() => setShowPreview(false)}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto pb-24">
@@ -156,6 +167,7 @@ export default function CapturePage() {
 
           {/* Show image while loading too */}
           {ocrState === 'loading' && (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={imageUrl} alt="preview" className="max-w-full max-h-[70vh] opacity-50" />
           )}
         </div>
